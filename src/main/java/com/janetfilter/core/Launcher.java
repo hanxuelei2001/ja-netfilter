@@ -42,47 +42,79 @@ public class Launcher {
         }
     }
 
+    /**
+     * premain
+     * java jvm 执行 main 之前会调用 premain
+     * @param args args
+     * @param inst Inst
+     */
     public static void premain(String args, Instrumentation inst) {
         premain(args, inst, false);
     }
 
     public static void agentmain(String args, Instrumentation inst) {
+        // 如果没有设置 debug 环境变量，则设置为 1
         if (null == System.getProperty("janf.debug")) {
             System.setProperty("janf.debug", "1");
         }
 
+        // 如果没有设置 output 环境变量，则设置为 3
         if (null == System.getProperty("janf.output")) {
             System.setProperty("janf.output", "3");
         }
 
+        // 执行 premain
         premain(args, inst, true);
     }
 
+    /**
+     * premain
+     *
+     * @param args       args
+     * @param inst       Inst
+     * @param attachMode 附加模式
+     */
     private static void premain(String args, Instrumentation inst, boolean attachMode) {
+        // 防止多次加载
         if (loaded) {
             DebugInfo.warn("You have multiple `ja-netfilter` as javaagent.");
             return;
         }
 
+        // 打印使用说明
         printUsage();
 
+        // 获取 jar 文件路径
         URI jarURI;
         try {
+            // 设置已加载
             loaded = true;
+            // 获取 jar 文件路径
+            // 目的是为了获取自己这个 jar 的所在目录
             jarURI = WhereIsUtils.getJarURI();
         } catch (Throwable e) {
             DebugInfo.error("Can not locate `ja-netfilter` jar file.", e);
             return;
         }
 
+        // 获取 jar 文件
         File agentFile = new File(jarURI.getPath());
         try {
+            // 获取Instrumentation接口实例有两种方式：
+            //
+            //当JVM以指定代理类的方式启动时，会将Instrumentation实例传递给代理类的premain方法。
+            //当JVM提供了一种机制，可以在JVM启动后随时启动代理时，会将Instrumentation实例传递给代理代码的agentmain方法。
+            //这些机制在包规范中有详细描述。
+            //
+            //一旦代理获得了Instrumentation实例，代理可以随时调用该实例上的方法。
+            // 添加到 bootstrap classloader
             inst.appendToBootstrapClassLoaderSearch(new JarFile(agentFile));
         } catch (Throwable e) {
             DebugInfo.error("Can not access `ja-netfilter` jar file.", e);
             return;
         }
 
+        // 初始化环境
         Initializer.init(new Environment(inst, agentFile, args, attachMode)); // for some custom UrlLoaders
     }
 

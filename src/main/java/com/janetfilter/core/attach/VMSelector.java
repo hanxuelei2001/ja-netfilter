@@ -18,32 +18,35 @@ public class VMSelector {
         this.thisJar = thisJar;
     }
 
-    private List<VMDescriptor> getVMList() throws Exception {
-        File jpsCommand = WhereIsUtils.findJPS();
-        if (null == jpsCommand) {
-            throw new Exception("jps command not found");
+    private List<VMDescriptor> getVMList() throws Exception { // 定义私有方法getVMList，返回VMDescriptor列表，抛出异常
+
+        File jpsCommand = WhereIsUtils.findJPS(); // 使用WhereIsUtils查找jps命令的位置
+        if (null == jpsCommand) { // 如果没有找到jps命令
+            throw new Exception("jps command not found"); // 抛出异常，提示未找到jps命令
         }
 
-        List<String> list = new ArrayList<>();
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ProcessUtils.start(new ProcessBuilder(jpsCommand.getAbsolutePath(), "-lv"), bos);
+        List<String> list = new ArrayList<>(); // 创建一个字符串列表，用于存储jps命令的输出
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(); // 创建一个字节数组输出流，用于存储jps命令的输出
 
-        String line;
-        BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bos.toByteArray())));
-        while ((line = reader.readLine()) != null) {
-            list.add(line);
+        ProcessUtils.start(new ProcessBuilder(jpsCommand.getAbsolutePath(), "-lv"), bos); // 使用ProcessUtils启动jps命令，参数为-lv，并将输出写入bos
+
+        String line; // 定义一个字符串变量，用于存储每一行输出
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bos.toByteArray()))); // 创建BufferedReader，读取bos中的内容
+        while ((line = reader.readLine()) != null) { // 持续读取每一行输出，直到为空
+            list.add(line); // 将每一行输出添加到list中
         }
 
-        String processId = ProcessUtils.currentId();
-        return list.stream()
-                .map(s -> {
-                    String[] section = (s + "   ").split(" ", 3);
-                    return new VMDescriptor(section[0].trim(), section[1].trim(), section[2].trim());
+        String processId = ProcessUtils.currentId(); // 获取当前进程的ID
+        return list.stream() // 将list转换为流
+                .map(s -> { // 映射每个字符串为VMDescriptor对象
+                    String[] section = (s + "   ").split(" ", 3); // 分割字符串为三部分，避免数组越界
+                    return new VMDescriptor(section[0].trim(), section[1].trim(), section[2].trim()); // 创建VMDescriptor对象
                 })
-                .filter(d -> !d.getId().equals(processId) && !"sun.tools.jps.Jps".equals(d.getClassName()) && !"jdk.jcmd/sun.tools.jps.Jps".equals(d.getClassName()))
-                .sorted(Comparator.comparingInt(d -> Integer.parseInt(d.getId())))
-                .collect(Collectors.toList());
+                .filter(d -> !d.getId().equals(processId) && !"sun.tools.jps.Jps".equals(d.getClassName()) && !"jdk.jcmd/sun.tools.jps.Jps".equals(d.getClassName())) // 过滤掉当前进程和jps进程
+                .sorted(Comparator.comparingInt(d -> Integer.parseInt(d.getId()))) // 按进程ID排序
+                .collect(Collectors.toList()); // 收集结果为列表
     }
+
 
     private String getInput() throws IOException {
         return new BufferedReader(new InputStreamReader(System.in)).readLine().trim();
@@ -102,23 +105,25 @@ public class VMSelector {
         processSelect();
     }
 
-    public void select() throws Exception {
-        boolean first = null == descriptors;
-        List<VMDescriptor> temp = getVMList();
-        if (null != descriptors && !descriptors.isEmpty()) {
-            temp.forEach(d -> d.setOld(descriptors.stream().anyMatch(d1 -> d.getId().equals(d1.getId()))));
+    public void select() throws Exception { // 定义select方法，抛出异常
+
+        boolean first = null == descriptors; // 检查descriptors是否为空，确定是否是第一次获取虚拟机列表
+        List<VMDescriptor> temp = getVMList(); // 获取当前的虚拟机列表并存储在temp中
+        if (null != descriptors && !descriptors.isEmpty()) { // 如果descriptors不为空且不为空列表
+            temp.forEach(d -> d.setOld(descriptors.stream().anyMatch(d1 -> d.getId().equals(d1.getId())))); // 更新temp中每个虚拟机描述符的旧状态
         }
 
-        descriptors = temp;
-        System.out.println("  Java Virtual Machine List: (Select and attach" + (first ? "" : ", + means the new one") + ")");
+        descriptors = temp; // 将temp赋值给descriptors
+        System.out.println("  Java Virtual Machine List: (Select and attach" + (first ? "" : ", + means the new one") + ")"); // 打印虚拟机列表提示信息
 
-        int index = 1;
-        for (VMDescriptor d : descriptors) {
-            System.out.printf("  %3d]:%s%s %s%n", index++, d.getOld() ? " " : "+", d.getId(), d.getClassName());
+        int index = 1; // 初始化索引为1
+        for (VMDescriptor d : descriptors) { // 遍历descriptors中的每个虚拟机描述符
+            System.out.printf("  %3d]:%s%s %s%n", index++, d.getOld() ? " " : "+", d.getId(), d.getClassName()); // 打印每个虚拟机的索引、状态、ID和类名
         }
-        System.out.println("    r]: <Refresh virtual machine list>");
-        System.out.println("    q]: <Quit the ja-netfilter>");
+        System.out.println("    r]: <Refresh virtual machine list>"); // 打印刷新虚拟机列表选项
+        System.out.println("    q]: <Quit the ja-netfilter>"); // 打印退出ja-netfilter选项
 
-        processSelect();
+        processSelect(); // 调用processSelect方法处理用户选择
     }
+
 }

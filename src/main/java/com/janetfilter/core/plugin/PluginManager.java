@@ -28,35 +28,38 @@ public final class PluginManager {
         this.environment = environment;
     }
 
-    public void loadPlugins() {
-        long startTime = System.currentTimeMillis();
+    public void loadPlugins() { // 定义加载插件的方法
 
-        File pluginsDirectory = environment.getPluginsDir();
-        if (!pluginsDirectory.exists() || !pluginsDirectory.isDirectory()) {
-            return;
+        long startTime = System.currentTimeMillis(); // 获取当前时间，记录开始时间
+
+        File pluginsDirectory = environment.getPluginsDir(); // 获取插件目录
+        if (!pluginsDirectory.exists() || !pluginsDirectory.isDirectory()) { // 如果插件目录不存在或不是目录
+            return; // 直接返回，不继续执行
         }
 
-        File[] pluginFiles = pluginsDirectory.listFiles((d, n) -> n.endsWith(".jar"));
-        if (null == pluginFiles) {
-            return;
+        File[] pluginFiles = pluginsDirectory.listFiles((d, n) -> n.endsWith(".jar")); // 获取插件目录中所有以“.jar”结尾的文件
+        if (null == pluginFiles) { // 如果没有找到任何插件文件
+            return; // 直接返回，不继续执行
         }
 
-        try {
-            ExecutorService executorService = Executors.newCachedThreadPool();
-            for (File pluginFile : pluginFiles) {
-                executorService.submit(new PluginLoadTask(pluginFile));
+        try { // 尝试执行以下代码，并捕获异常
+
+            ExecutorService executorService = Executors.newCachedThreadPool(); // 创建一个缓存线程池
+            for (File pluginFile : pluginFiles) { // 遍历所有插件文件
+                executorService.submit(new PluginLoadTask(pluginFile)); // 提交每个插件文件的加载任务到线程池
             }
 
-            executorService.shutdown();
-            if (!executorService.awaitTermination(30L, TimeUnit.SECONDS)) {
-                throw new RuntimeException("Load plugin timeout");
+            executorService.shutdown(); // 关闭线程池，不再接收新任务
+            if (!executorService.awaitTermination(30L, TimeUnit.SECONDS)) { // 等待所有任务在30秒内完成
+                throw new RuntimeException("Load plugin timeout"); // 如果超时，抛出运行时异常
             }
 
-            DebugInfo.debug(String.format("============ All plugins loaded, %.2fs elapsed ============", (System.currentTimeMillis() - startTime) / 1000D));
-        } catch (Throwable e) {
-            DebugInfo.error("Load plugin failed", e);
+            DebugInfo.debug(String.format("============ All plugins loaded, %.2fs elapsed ============", (System.currentTimeMillis() - startTime) / 1000D)); // 打印所有插件加载完成的信息和耗时
+        } catch (Throwable e) { // 捕获所有异常
+            DebugInfo.error("Load plugin failed", e); // 打印加载插件失败的信息和异常
         }
     }
+
 
     private class PluginLoadTask implements Runnable {
         private final File pluginFile;

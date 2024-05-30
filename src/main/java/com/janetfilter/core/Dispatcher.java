@@ -15,6 +15,11 @@ public final class Dispatcher implements ClassFileTransformer {
     private final List<MyTransformer> globalTransformers = new ArrayList<>();
     private final List<MyTransformer> manageTransformers = new ArrayList<>();
 
+    /**
+     * 调度员
+     *
+     * @param environment 环境
+     */
     public Dispatcher(Environment environment) {
         this.environment = environment;
     }
